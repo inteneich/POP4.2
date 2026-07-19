@@ -321,7 +321,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_CREATE: {
             // Title
-            CreateWindowW(L"STATIC", L"Windows 11 CPU Requirements Patcher (AMD Phenom II)",
+            CreateWindowW(L"STATIC", L"Windows 11 CPU Requirements Patcher (AMD Phenom)",
                           WS_CHILD | WS_VISIBLE | SS_CENTER,
                           10, 10, 480, 20, hwnd, NULL, NULL, NULL);
 
@@ -331,7 +331,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                           130, 40, 240, 40, hwnd, (HMENU)1, NULL, NULL);
 
             // KiSetFeatureBits Checkbox (Enabled by default)
-            g_hwndKiSetCheckbox = CreateWindowW(L"BUTTON", L"Patch KiSetFeatureBits checks (jumps/not currently necessary)",
+            g_hwndKiSetCheckbox = CreateWindowW(L"BUTTON", L"Patch KiSetFeatureBits checks (jumps/not necessary)",
                                                 WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                                                 40, 95, 420, 20, hwnd, NULL, NULL, NULL);
             // CPUID table Checkbox (Enabled by default)
@@ -341,7 +341,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             SendMessageW(g_hwndCpuIdCheckbox, BM_SETCHECK, BST_CHECKED, 0);
 
             // Debug Checkbox (Disabled by default)
-            g_hwndDebugCheckbox = CreateWindowW(L"BUTTON", L"Enable QEMU GDB debugging loop (KeBugCheckEx -> EB FE). DO NOT check this box for normal usage!",
+            g_hwndDebugCheckbox = CreateWindowW(L"BUTTON", L"Enable QEMU GDB debugging loop (KeBugCheckEx -> EB FE)",
                                                 WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                                                 40, 145, 420, 20, hwnd, NULL, NULL, NULL);
 
@@ -399,7 +399,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    const WCHAR CLASS_NAME[] = L"Phenom2PatcherClass";
+    const WCHAR CLASS_NAME[] = L"PhenomPatcherClass";
 
     WNDCLASSW wc = {0};
     wc.lpfnWndProc = WndProc;
@@ -416,7 +416,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     int winHeight = 330; // Extended height for additional checkboxes
 
     HWND hwnd = CreateWindowExW(
-        0, CLASS_NAME, L"Windows 11 CPU Requirements Patcher",
+        0, CLASS_NAME, L"POP4.2, a Windows 11 SSE4.2 Requirements Patcher",
         WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX, // Fixed size window
         (screenWidth - winWidth) / 2, (screenHeight - winHeight) / 2,
         winWidth, winHeight,
