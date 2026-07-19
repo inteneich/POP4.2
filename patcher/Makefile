@@ -10,10 +10,6 @@ OBJ = main.o
 # Default target
 all: $(TARGET)
 
-# Compile resource
- app_res.o: app.rc icon.ico
-	$(RC) $(RCFLAGS) app.rc $@
-
 # Compile
 main.o: $(SRC)
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -26,5 +22,5 @@ $(TARGET): $(OBJ)
 
 # Clean
 clean:
-	rm -f $(OBJ) $(TARGET)
+	rm -f $(OBJ) $(TARGET) main.o
 
