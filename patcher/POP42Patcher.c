@@ -1,5 +1,5 @@
 #include <windows.h>
-#include <commdlg.h>
+#include <wchar.h>
 #include <stdio.h>
 
 // MinGW wants this
@@ -7,9 +7,7 @@
 #define CHECKSUM_SUCCESS 0
 #endif
 
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "comdlg32.lib")
-#pragma comment(lib, "gdi32.lib")
+BOOL verbose = false;
 
 // Typedef for MapFileAndCheckSumW from imagehlp.dll
 typedef DWORD (__stdcall *pfnMapFileAndCheckSumW)(
@@ -298,9 +296,9 @@ BOOL PatchKernel(const WCHAR* filePath, BOOL patchKiSet, BOOL patchCpuIdTable, B
         swprintf_s(outMsg, outMsgLen, L"Success (modified), but failed to update optional header PE Checksum.");
         return FALSE;
     }
-
-    swprintf_s(outMsg, outMsgLen, L"Success! ntoskrnl.exe patched successfully.\n\n"
-                                  L"KiSetFeatureBits: %s (0x%X).\n"
+	
+    swprintf_s(outMsg, outMsgLen, L"Success! ntoskrnl.exe patched successfully.");
+    swprintf_s(outMsg, outMsgLen, L"KiSetFeatureBits: %s (0x%X).\n"
                                   L"CPUID Table: %s (0x%X).\n"
                                   L"KeBugCheckEx Loop: %s.",
                                   patchKiSet ? L"Patched" : L"Skipped", kiSetOffset,
@@ -309,130 +307,73 @@ BOOL PatchKernel(const WCHAR* filePath, BOOL patchKiSet, BOOL patchCpuIdTable, B
     return TRUE;
 }
 
-// Global state variables
-WCHAR g_FilePath[MAX_PATH] = L"";
-HWND g_hwndFile = NULL;
-HWND g_hwndText = NULL;
-HWND g_hwndKiSetCheckbox = NULL;
-HWND g_hwndCpuIdCheckbox = NULL;
-HWND g_hwndDebugCheckbox = NULL;
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-        case WM_CREATE: {
-            // Title
-            CreateWindowW(L"STATIC", L"Windows 11 CPU Requirements Patcher (AMD Phenom)",
-                          WS_CHILD | WS_VISIBLE | SS_CENTER,
-                          10, 10, 480, 20, hwnd, NULL, NULL, NULL);
-
-            // Select and Patch Button
-            CreateWindowW(L"BUTTON", L"Select and Patch ntoskrnl.exe",
-                          WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                          130, 40, 240, 40, hwnd, (HMENU)1, NULL, NULL);
-
-            // KiSetFeatureBits Checkbox (Enabled by default)
-            g_hwndKiSetCheckbox = CreateWindowW(L"BUTTON", L"Patch KiSetFeatureBits checks (jumps/not necessary)",
-                                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                                                40, 95, 420, 20, hwnd, NULL, NULL, NULL);
-            // CPUID table Checkbox (Enabled by default)
-            g_hwndCpuIdCheckbox = CreateWindowW(L"BUTTON", L"Patch CPUID requirements table (SSE4.2 -> 0x0C)",
-                                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                                                40, 120, 420, 20, hwnd, NULL, NULL, NULL);
-            SendMessageW(g_hwndCpuIdCheckbox, BM_SETCHECK, BST_CHECKED, 0);
-
-            // Debug Checkbox (Disabled by default)
-            g_hwndDebugCheckbox = CreateWindowW(L"BUTTON", L"Enable QEMU GDB debugging loop (KeBugCheckEx -> EB FE)",
-                                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                                                40, 145, 420, 20, hwnd, NULL, NULL, NULL);
-
-            // File path display
-            g_hwndFile = CreateWindowW(L"STATIC", L"No file selected.",
-                                       WS_CHILD | WS_VISIBLE | SS_CENTER | SS_PATHELLIPSIS,
-                                       10, 175, 480, 20, hwnd, NULL, NULL, NULL);
-
-            // Status output text box
-            g_hwndText = CreateWindowW(L"STATIC", L"Ready.",
-                                       WS_CHILD | WS_VISIBLE | SS_CENTER,
-                                       10, 200, 480, 80, hwnd, NULL, NULL, NULL);
-
-            // Apply DEFAULT GUI FONT
-            HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-            EnumChildWindows(hwnd, (WNDENUMPROC)SendMessage, (LPARAM)WM_SETFONT);
-            break;
-        }
-        case WM_COMMAND: {
-            if (LOWORD(wParam) == 1) { // Patch button clicked
-                OPENFILENAMEW ofn;
-                ZeroMemory(&ofn, sizeof(ofn));
-                ofn.lStructSize = sizeof(ofn);
-                ofn.hwndOwner = hwnd;
-                ofn.lpstrFilter = L"Kernel Files (ntoskrnl.exe)\0ntoskrnl.exe\0All Executable Files (*.exe)\0*.exe\0";
-                ofn.lpstrFile = g_FilePath;
-                ofn.nMaxFile = MAX_PATH;
-                ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
-
-                if (GetOpenFileNameW(&ofn)) {
-                    SetWindowTextW(g_hwndFile, g_FilePath);
-                    SetWindowTextW(g_hwndText, L"Patching... Please wait.");
-                    UpdateWindow(g_hwndText);
-
-                    // Check which patches are selected
-                    BOOL patchKiSet = (SendMessageW(g_hwndKiSetCheckbox, BM_GETCHECK, 0, 0) == BST_CHECKED);
-                    BOOL patchCpuIdTable = (SendMessageW(g_hwndCpuIdCheckbox, BM_GETCHECK, 0, 0) == BST_CHECKED);
-                    BOOL enableDebug = (SendMessageW(g_hwndDebugCheckbox, BM_GETCHECK, 0, 0) == BST_CHECKED);
-
-                    WCHAR statusMsg[512] = L"";
-                    PatchKernel(g_FilePath, patchKiSet, patchCpuIdTable, enableDebug, statusMsg, 512);
-
-                    SetWindowTextW(g_hwndText, statusMsg);
-                }
-            }
-            break;
-        }
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            break;
-        default:
-            return DefWindowProcW(hwnd, msg, wParam, lParam);
-    }
-    return 0;
+static void PrintUsage(const wchar_t* progName) {
+    wprintf(L"POP4.2 - Windows 11 SSE4.2 Requirements Patcher \n");
+	wprintf(L"Copyright (c) 2026 Lynden Lewis \n\n");
+    wprintf(L"Usage:\n");
+    wprintf(L"  %ls <path-to-ntoskrnl.exe> [options]\n\n", progName);
+	wprintf(L"Options:\n");
+	wprintf(L"  -h, --help             Show this help message\n");
+    wprintf(L"  --patch-kiset          Patch KiSetFeatureBits CPU checks\n");
+    wprintf(L"  --disable-cpuid        Skip patching the CPUID requirements table (patched by default)\n");
+    wprintf(L"  --enable-qemu-loop     Enable QEMU/GDB debugging loop (KeBugCheckEx -> EB FE)\n");
 }
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    const WCHAR CLASS_NAME[] = L"PhenomPatcherClass";
-
-    WNDCLASSW wc = {0};
-    wc.lpfnWndProc = WndProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = CLASS_NAME;
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-
-    RegisterClassW(&wc);
-
-    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-    int winWidth = 520;
-    int winHeight = 330; // Extended height for additional checkboxes
-
-    HWND hwnd = CreateWindowExW(
-        0, CLASS_NAME, L"POP4.2, a Windows 11 SSE4.2 Requirements Patcher",
-        WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX, // Fixed size window
-        (screenWidth - winWidth) / 2, (screenHeight - winHeight) / 2,
-        winWidth, winHeight,
-        NULL, NULL, hInstance, NULL
-    );
-
-    if (hwnd == NULL) return 0;
-
-    ShowWindow(hwnd, nCmdShow);
-    UpdateWindow(hwnd);
-
-    MSG msg = {0};
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+ 
+int wmain(int argc, wchar_t* argv[]) {
+    if (argc < 2) {
+        PrintUsage(argv[0]);
+        return 1;
     }
+ 
+    const wchar_t* filePath = NULL;
+	BOOL patchKiSet = FALSE;
+    BOOL patchCpuIdTable = TRUE;
+    BOOL enableDebug = FALSE;
 
-    return 0;
+    for (int i = 1; i < argc; i++) {
+        if (wcscmp(argv[i], L"-h") == 0 || wcscmp(argv[i], L"--help") == 0) {
+            PrintUsage(argv[0]);
+            return 0;
+        } else if (wcscmp(argv[i], L"--patch-kiset") == 0) {
+            patchKiSet = TRUE;
+        } else if (wcscmp(argv[i], L"--disable-cpuid") == 0) {
+            patchCpuIdTable = FALSE;
+        } else if (wcscmp(argv[i], L"--enable-qemu-loop") == 0) {
+            enableDebug = TRUE;
+        } else if (argv[i][0] == L'-') {
+            wprintf(L"Unknown option: %ls\n\n", argv[i]);
+            PrintUsage(argv[0]);
+            return 1;
+        } else {
+            if (filePath != NULL) {
+                wprintf(L"Error: multiple file paths given ('%ls' and '%ls').\n", filePath, argv[i]);
+                return 1;
+            }
+            filePath = argv[i];
+        }
+    }
+ 
+    if (filePath == NULL) {
+        wprintf(L"ERROR: no target file specified.\n\n");
+        PrintUsage(argv[0]);
+        return 1;
+    }
+ 
+    if (!patchKiSet && !patchCpuIdTable && !enableDebug) {
+        wprintf(L"WARNING: No changes were made to ntoskrnl.\n");
+        return 1;
+    }
+ 
+    wprintf(L"Target: %ls\n\n", filePath);
+	wprintf(L"Patched features: \n");
+    wprintf(L"  KiSetFeatureBits patch : %ls\n", patchKiSet ? L"yes" : L"no");
+    wprintf(L"  CPUID table patch      : %ls\n", patchCpuIdTable ? L"yes" : L"no");
+    wprintf(L"  Debug loop             : %ls\n\n", enableDebug ? L"yes" : L"no");
+ 
+    WCHAR statusMsg[512] = L"";
+    BOOL ok = PatchKernel(filePath, patchKiSet, patchCpuIdTable, enableDebug, statusMsg, 512);
+ 
+    wprintf(L"%ls\n", statusMsg);
+ 
+    return ok ? 0 : 1;
 }

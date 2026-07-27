@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Os -s -o POP42Patcher.exe -lcomdlg32 -lgdi32 -mwindows -static
+CFLAGS = -Os -s -municode -static
 
 # Targets
 TARGET = POP42Patcher.exe
@@ -16,11 +16,8 @@ main.o: $(SRC)
 
 # Link everything
 $(TARGET): $(OBJ)
-	$(CC) $(OBJ) \
-	-lcomdlg32 -lgdi32 -mwindows -static -s \
-	-o $(TARGET)
+	$(CC) $(OBJ) -municode -static -s -o $(TARGET)
 
 # Clean
 clean:
 	rm -f $(OBJ) $(TARGET)
-
